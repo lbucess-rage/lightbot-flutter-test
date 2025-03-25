@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta http-equiv="Content-Security-Policy" content="default-src * 'self' data: gap: 'unsafe-inline' 'unsafe-eval'; style-src * 'self' 'unsafe-inline'; script-src * 'self' 'unsafe-inline' 'unsafe-eval' https://lightbot-rage.s3.ap-northeast-2.amazonaws.com;">
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      width: 100%;
+      background-color: #ffffff;
+      overflow: hidden;
+      box-sizing: border-box;
+      -webkit-overflow-scrolling: touch;
+    }
+    lightbot-standard {
+      display: block;
+      width: 100%;
+      height: 100%;
+      max-width: 100vw;
+      max-height: 100vh;
+      overflow: hidden;
+    }
+    #error-container {
+      display: none;
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: #fff;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      text-align: center;
+      z-index: 100;
+    }
+    #error-icon {
+      width: 80px;
+      height: 80px;
+      margin-bottom: 20px;
+    }
+    #error-title {
+      font-size: 18px;
+      font-weight: bold;
+      margin-bottom: 10px;
+      color: #333;
+    }
+    #error-message {
+      font-size: 14px;
+      color: #666;
+    }
+    /* 사용자 정의 스타일 - 웹챗 내부 크기 조정 */
+    :root {
+      --chat-scale: 0.95; /* 기본값 (Flutter에서 동적으로 변경됨) */
+    }
+    /* 웹챗 내부 요소에 영향을 줄 수 있는 스타일 */
+    body iframe, 
+    body div[class*="chat"] {
+      max-width: 100% !important;
+      max-height: 100% !important;
+      transform-origin: top center;
+      transform: scale(var(--chat-scale));
+      width: calc(100% / var(--chat-scale)) !important;
+      height: calc(100% / var(--chat-scale)) !important;
+    }
+    
+    /* 전체 컨테이너가 화면을 벗어나지 않도록 추가 조정 */
+    [class*="chat-container"], 
+    [class*="chatContainer"],
+    [class*="chat-window"],
+    [class*="chatWindow"] {
+      max-width: 100% !important;
+      max-height: 100% !important;
+      overflow: hidden !important;
+    }
+    
+    /* 스크롤 영역이 있는 경우 스크롤 허용 */
+    [class*="chat-messages"],
+    [class*="chatMessages"],
+    [class*="message-list"],
+    [class*="messageList"] {
+      overflow-y: auto !important;
+      -webkit-overflow-scrolling: touch;
+    }
+  </style>
+</head>
+<body>
+  <!-- 에러 메시지 컨테이너 -->
+  <div id="error-container">
+    <svg id="error-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="12" cy="12" r="10" stroke="#E74C3C" stroke-width="2"/>
+      <path d="M12 7V13" stroke="#E74C3C" stroke-width="2" stroke-linecap="round"/>
+      <circle cx="12" cy="16" r="1" fill="#E74C3C"/>
+    </svg>
+    <div id="error-title">웹챗 로드 실패</div>
+    <div id="error-message">웹챗 서비스에 연결할 수 없습니다.<br>네트워크 연결을 확인해주세요.</div>
+  </div>
+
+  <!-- Lightbot 컨테이너 -->
+  <lightbot-standard style="height: 100vh;"></lightbot-standard>
+  
+  <script type="module">
+    // 오류 발생 시 표시할 함수
+    function showError(message) {
+      console.error("Error:", message);
+      document.getElementById('error-container').style.display = 'flex';
+      document.getElementById('error-message').textContent = 
+        '웹챗 서비스에 연결할 수 없습니다.\n' + message;
+    }
+
+    // 전역 오류 핸들러
+    window.onerror = function(message, source, lineno, colno, error) {
+      console.error(`오류 발생: ${message}`);
+      showError(`${message}`);
+      return true;
+    };
+
+    try {
+      // 웹챗 로드 시도
+      console.log("웹챗 로드 시도 중...");
+      
+      import('https://lightbot-rage.s3.ap-northeast-2.amazonaws.com/web.js')
+        .then(module => {
+          console.log("Lightbot 모듈 로드 성공");
+          const Lightbot = module.default;
+          
+          Lightbot.initStandard({
+            lightbot: "domain-cz5g02d",
+            apiHost: "https://lightbot-dev.lbucess.com", // HTTP -> HTTPS로 변경
+            element: document.querySelector('lightbot-standard'),
+            onInitialized: () => {
+              console.log("웹챗 초기화 완료");
+              // 초기화 후 이벤트 리스너 추가
+              window.addEventListener('resize', () => {
+                // 리사이즈 시 Flutter에 알림
+                if (window.ChatSDK) {
+                  window.ChatSDK.postMessage(JSON.stringify({
+                    type: 'resize',
+                    width: window.innerWidth,
+                    height: window.innerHeight
+                  }));
+                }
+              });
+            },
+            onError: (error) => {
+              console.error("웹챗 초기화 오류:", error);
+              showError("초기화 중 오류가 발생했습니다.");
+            }
+          });
+        })
+        .catch(error => {
+          console.error("웹챗 로드 실패:", error);
+          showError(error.message || "웹챗 파일을 불러올 수 없습니다.");
+        });
+    } catch (e) {
+      console.error("예상치 못한 오류:", e);
+      showError(e.message);
+    }
+  </script>
+</body>
+</html> 

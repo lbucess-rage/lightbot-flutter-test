@@ -1,0 +1,178 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+
+이 프로젝트는 solijs로 개발된 웹챗봇을 안드로이드나 ios 앱에 웹뷰를 랩핑하여 sdk를 만드는게 목적이야 
+
+이 프로젝트의 구현 설계를 아래와 같이 할려고 해 
+
+2. Flutter WebView를 이용한 챗봇 UI 구성
+이제 SolidJS로 만들어진 iframe 기반 웹 챗봇을 Flutter 앱에 통합할 차례입니다. Flutter에서는 webview_flutter 패키지를 사용해 WebView 위젯을 추가할 수 있습니다. Flutter SDK에 이 패키지를 종속성으로 추가하고 (pubspec.yaml의 dependencies 섹션에 webview_flutter: 추가), Flutter WebView를 통해 우리의 챗봇 웹 UI를 표시합니다. 웹 번들 자산 포함: SolidJS로 빌드된 챗봇의 웹 번들 파일(web.js)을 Flutter 프로젝트의 assets 폴더에 포함시킵니다. 필요하다면 HTML 파일을 하나 만들어 챗봇 스크립트를 삽입할 컨테이너로 사용합니다 (예: assets/chatbot.html). pubspec.yaml 파일에 해당 자산 경로를 등록해야 WebView에서 사용할 수 있습니다​
+STACKOVERFLOW.COM
+
+flutter:
+  assets:
+    - assets/chatbot.html
+    - assets/web.js
+
+이렇게 해두면 Flutter 빌드 시 assets 폴더의 파일이 앱 패키지에 포함됩니다. WebView 초기화 및 iframe 삽입: WebView 위젯을 추가하려면 Dart 코드에서 WebViewController를 통해 로컬 HTML이나 번들을 불러와야 합니다. 예를 들어, Flutter의 StatefulWidget에서 WebView를 구성하는 간단한 코드 구조는 다음과 같습니다:
+dart
+복사
+편집
+// WebViewController 생성 및 설정
+final controller = WebViewController()
+  ..setJavaScriptMode(JavaScriptMode.unrestricted); // JS 허용
+
+// 로컬 HTML을 WebView에 로드
+await controller.loadFlutterAsset('assets/chatbot.html');
+JavaScriptMode.unrestricted로 설정하여 WebView에서 JavaScript 실행과 iframe 로딩을 허용합니다. 위 코드에서 loadFlutterAsset 메소드는 주어진 자산 HTML 파일을 불러와 WebView에 표시합니다 (이 기능은 webview_flutter 최신 버전에 포함되어 있습니다). 만약 해당 메소드를 사용할 수 없는 버전이라면, rootBundle.loadString으로 HTML 파일 내용을 읽어온 뒤 WebViewController.loadUrl에 Uri.dataFromString(...).toString()을 넘겨주는 방식으로 대체할 수 있습니다​
+STACKOVERFLOW.COM
+. 중요한 것은 chatbot.html 내용에 우리가 포함한 web.js 스크립트를 삽입하는 것입니다. 예를 들면 chatbot.html의 본문을 아래처럼 구성할 수 있습니다:
+html
+복사
+편집
+<!DOCTYPE html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+</head>
+<body>
+  <!-- Flutter WebView를 통해 이 HTML이 로드되면 아래 스크립트가 실행되어 챗봇 UI가 삽입됨 -->
+  <script src="web.js" type="text/javascript"></script>
+</body>
+</html>
+이처럼 HTML body에 챗봇 번들 스크립트를 포함하면, web.js가 실행되면서 SolidJS 기반의 챗봇 UI iframe이 해당 WebView 상에 동적으로 삽입됩니다. iframe 기반 챗봇이므로, web.js 스크립트는 자체적으로 <iframe> 요소를 생성하여 챗봇 대화창을 표현할 것입니다. WebView는 기본적으로 iframe 콘텐츠 표시를 지원하므로, 특별한 추가 설정 없이도 JavaScriptMode.unrestricted만 켜주면 iframe UI가 정상적으로 렌더링됩니다. 네트워크 권한: 만약 챗봇이 동작하면서 외부 API 서버와 통신한다면 앱에 인터넷 접근 권한이 필요합니다. Android의 경우 AndroidManifest.xml에 <uses-permission android:name="android.permission.INTERNET" />이 선언돼 있는지 확인합니다. (Flutter 생성 프로젝트에는 기본적으로 포함되어 있습니다.) iOS의 경우 특별히 plist에 설정할 내용은 없지만, http 비보안 통신을 한다면 Info.plist에 App Transport Security 예외를 추가해야 합니다. 일반적으로 HTTPS 통신을 사용하면 별도 설정 없이 동작합니다.
+3. 챗봇 열기/닫기 기능 구현 (Dart 메소드)
+통합된 챗봇 UI에는 열기/닫기 버튼(예: 화면 하단에 떠 있는 아이콘 형태)이 있어 사용자가 챗봇 창을 표시하거나 숨길 수 있습니다. Flutter SDK에서는 이 동작을 Dart 메소드로 제어할 수 있도록 해야 합니다. 즉, 앱 개발자가 openChatbot()이나 closeChatbot() 메소드를 호출하면 WebView 안의 챗봇이 열리거나 닫히도록 구현합니다. 이를 위해 **Flutter와 WebView 내 JavaScript 간의 상호작용(브릿지)**이 필요합니다. 일반적인 방법은 WebView의 JavaScript 함수를 호출하는 것입니다. Flutter의 WebViewController는 runJavascript (또는 구 버전에서는 evaluateJavascript) 메소드를 제공하여 웹 페이지 내에서 JavaScript 코드를 실행할 수 있습니다​
+MEDIUM.COM
+. 예를 들어, 웹 챗봇 스크립트에서 전역 함수 window.openChatbot()과 window.closeChatbot()을 제공한다고 가정하면, 이를 Flutter 쪽에서 호출하는 식입니다. Dart 측 SDK에 아래와 같은 메소드를 구현할 수 있습니다:
+dart
+복사
+편집
+void openChatbot() {
+  webViewController.runJavaScript('openChatbot()');
+}
+
+void closeChatbot() {
+  webViewController.runJavaScript('closeChatbot()');
+}
+위 코드는 WebView에 로드된 페이지에서 openChatbot() JavaScript 함수를 실행합니다. 이때 해당 함수는 챗봇 iframe을 표시하는 동작을 수행하도록 웹 번들쪽에 미리 구현되어 있어야 합니다. 만약 web.js에 직접 이러한 함수를 정의할 수 있다면 가장 좋습니다. 예를 들어 window.openChatbot = function() { ... } 형태로 열기 동작을, window.closeChatbot = function() { ... } 형태로 닫기 동작을 정의해 두고 Flutter에서 이를 호출하는 방식입니다. 만약 챗봇 UI가 스스로 토글 버튼을 갖고 있어 JavaScript 함수가 없더라도, Flutter에서 해당 버튼을 강제로 클릭하는 방식을 사용할 수도 있습니다. 예를 들어, 챗봇 열기 아이콘에 고유 ID가 있다고 하면 document.getElementById('open-button').click();와 같은 스크립트를 runJavaScript로 실행해 열리는 효과를 낼 수 있습니다. 그러나 이러한 DOM 조작 방식보다는 공식 지원 함수(openChatbot() 등)를 사용하는 편이 안정적입니다. Flutter에서 JavaScript 함수를 호출하는 방법은 위와 같이 매우 간단하며, StackOverflow의 예시에서도 webViewController.evaluateJavascript('fromFlutter("pop")');처럼 문자열로 JavaScript 함수를 호출하고 인자를 전달하는 것을 볼 수 있습니다​
+STACKOVERFLOW.COM
+. 동일한 원리로 openChatbot() 호출 문자열을 전달하면 챗봇을 열 수 있습니다. 이와 반대로, 웹 쪽에서 Flutter로 신호를 보내는 방법도 구현하면 유용합니다. 예를 들어 사용자가 챗봇 UI 내부에서 창을 닫았을 때 Flutter 측에서도 이를 알아차려 UI를 갱신하거나 다른 처리를 할 수 있습니다. 이를 위해 JavaScript Channel을 사용합니다. WebView에 javascriptChannels를 설정하여 특정 채널 이름을 등록하면, 웹 페이지에서 window.ChannelName.postMessage("내용")을 호출할 때 Dart 쪽의 콜백이 실행됩니다​
+STACKOVERFLOW.COM
+​
+STACKOVERFLOW.COM
+. 예를 들어 Flutter 쪽 WebView 초기화 시 다음과 같이 채널을 추가합니다:
+dart
+복사
+편집
+WebView(
+  javascriptMode: JavascriptMode.unrestricted,
+  javascriptChannels: {
+    JavascriptChannel(
+      name: 'ChatSDK',
+      onMessageReceived: (JavascriptMessage message) {
+        final data = message.message;
+        // 예: data가 "closed"라면 챗봇 창 닫힘 이벤트 처리
+        if (data == "closed") {
+          print("Chatbot was closed by user");
+        }
+      },
+    )
+  },
+  onWebViewCreated: (ctrl) {
+    webViewController = ctrl;
+    // ... (load HTML as shown above)
+  },
+)
+그러면 웹 쪽 web.js 또는 iframe 내에서 다음과 같이 Dart로 메시지를 보낼 수 있습니다:
+javascript
+복사
+편집
+window.ChatSDK.postMessage("closed");
+이렇게 하면 앞서 등록한 onMessageReceived 콜백이 호출되어 "closed"라는 문자열을 받아 처리할 수 있습니다. 두 방향 통신 모두 가능하며, 이를 통해 Flutter 앱과 챗봇 웹 콘텐츠가 서로 상호작용할 수 있습니다​
+STACKOVERFLOW.COM
+​
+STACKOVERFLOW.COM
+. 요약하면, SDK의 openChatbot()/closeChatbot() 메소드는 내부적으로 WebView의 JavaScript 함수를 호출하여 챗봇 UI를 열고 닫는 역할을 합니다. 또한 필요에 따라 JavaScript 채널을 통해 웹 측 이벤트를 Dart로 전달받아 처리할 수 있습니다.
+4. 챗봇 스타일 설정 및 초기 값 전달
+SDK 사용자(앱 개발자)가 챗봇의 스타일을 설정하거나 초기 설정값을 전달할 수 있도록 인터페이스를 제공해야 합니다. 예를 들어 챗봇 위젯의 테마 색상, 초기 환영 메시지, 사용자 식별자 등의 정보를 Flutter SDK에서 WebView로 전달하는 구조를 설계합니다. 이를 구현하는 한 가지 방법은 초기 로딩 시점에 JavaScript로 해당 설정을 주입하는 것입니다. 앞서 언급한 chatbot.html을 로드할 때, web.js를 include하기 전에 전역 설정 변수를 미리 정의해둘 수 있습니다. 예를 들어 chatbot.html의 스크립트를 다음과 같이 수정할 수 있습니다:
+html
+복사
+편집
+<script>
+  window.chatbotConfig = {
+    themeColor: "#ff6600",
+    welcomeMessage: "안녕하세요! 무엇을 도와드릴까요?",
+    userId: "USER1234"
+  };
+</script>
+<script src="web.js"></script>
+이렇게 하면 web.js가 실행될 때 window.chatbotConfig 객체를 참고하여 스타일이나 초기 설정을 적용하도록 만들 수 있습니다. SolidJS로 구성된 챗봇 코드에서 해당 전역 설정을 읽어 테마를 바꾸거나 특정 동작을 수행하도록 개발팀에서 구현하면 됩니다. 만약 web.js에서 전역 변수를 읽는 기능이 없다면, URL 쿼리 매개변수 등을 사용할 수도 있습니다. 예를 들어 chatbot.html을 로드할 때 controller.loadRequest(Uri.parse('assets/chatbot.html?theme=orange'))처럼 쿼리를 붙이고, 웹 번들에서 window.location.search를 파싱하여 초기 설정을 결정하는 방식입니다. 다만 이 경우 로컬 파일을 file://로 로드하면 location.search가 동작하지 않을 수 있으므로, 전역 변수 방식이 더 안전합니다. Flutter SDK 단에서는 이러한 설정을 쉽게 전달할 수 있도록 ChatbotOptions나 ChatbotConfig라는 Dart 클래스나 맵(Map) 구조체를 정의해 두고, ChatbotSDK.initialize(options) 메소드로 개발자가 값을 설정하게 할 수 있습니다. 이 initialize() 메소드 안에서 위처럼 HTML에 삽입될 스크립트를 생성하거나, WebView에 초기 자바스크립트 코드를 runJavaScript로 실행하여 설정값을 주입합니다. 또 다른 접근으로, WebView가 초기화된 뒤에 postMessage를 이용한 설정 전달도 가능합니다. 예를 들어 WebView가 완전히 로드된 시점(onPageFinished 콜백 등)에서 webViewController.runJavaScript('applySettings(${jsonEncode(config)})')처럼 호출하고, web.js 쪽에 applySettings 함수를 구현하여 전달된 설정(JSON)을 파싱해 반영하게 할 수 있습니다. 이 방식은 HTML을 수정하지 않아도 되지만, 웹 측에 해당 함수를 구현해야 한다는 점은 같습니다. WebView와 JavaScript 간 통신은 앞서 설명한 JavascriptChannel로도 활용할 수 있습니다. Flutter -> Web 설정 전달은 runJavaScript를 쓰는 편이 간단하고, Web -> Flutter로 이벤트/결과를 전달해야 한다면 postMessage를 쓸 수 있습니다. 예를 들어 챗봇이 초기화 완료되면 "ready" 같은 신호를 보내 Flutter에서 로딩 인디케이터를 없애는 등의 처리가 가능할 것입니다. 이러한 통신 흐름은 양방향으로 자유롭게 설계할 수 있으며, 실제 구현 시 콘솔 로그 등을 활용해 잘 주고받는지 디버그하면 됩니다. 정리하면, SDK는 개발자가 스타일 옵션과 초기 설정을 지정할 수 있는 API를 제공하고, 이를 WebView의 웹 콘텐츠에 반영하도록 해야 합니다. 구현 단계에서 SolidJS 챗봇 코드를 약간 수정할 수 있다면 전역 설정이나 함수 훅을 넣어두는 것이 좋고, 그렇지 않다면 WebView에서 DOM을 조작하는 방법으로 CSS를 추가로 주입하거나 JavaScript로 강제 스타일 변경을 하는 방법도 있습니다. (예: document.documentElement.style.setProperty('--chatbot-color', color); 형태로 CSS 변수를 변경하는 등).
+5. SDK 사용 예시 (샘플 Flutter 앱)
+이 섹션에서는 위에서 만든 Flutter용 챗봇 SDK를 실제 앱에서 사용하는 방법을 예시로 설명합니다. Flutter 플러그인 형태의 SDK를 배포한다고 가정하므로, 다른 Flutter 앱 개발자는 pubspec에 해당 SDK를 추가하여 사용할 수 있습니다. (또는 로컬 경로나 Git URL로 패키지를 불러올 수도 있습니다.) 1) 초기 설정 주입: 앱 시작 시 챗봇 SDK를 초기화하여 필요한 자원을 로드하고 설정을 적용합니다. 예를 들어 main.dart에서 MaterialApp을 생성하기 전에 다음과 같이 SDK 초기화를 호출할 수 있습니다:
+dart
+복사
+편집
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  // 챗봇 SDK 초기화 (예: 스타일 및 초기 설정 적용)
+  await ChatbotSDK.initialize(ChatbotConfig(
+    themeColor: Colors.blue,
+    welcomeMessage: "안녕하세요!",
+    userId: "USER1234",
+  ));
+  runApp(MyApp());
+}
+위 코드에서 ChatbotSDK.initialize는 내부적으로 WebView를 미리 로드하거나(백그라운드에서), 필요한 설정값을 기억해두는 역할을 합니다. 만약 앱 시작 후에 WebView를 띄울 계획이라면 initialize 시점에 WebView까지 만들 필요는 없고, 설정만 받아놓았다가 실제 ChatbotWidget을 화면에 추가할 때 적용해도 됩니다. 초기화 시점에 네트워크 요청 등을 수행해 챗봇 세션을 준비해야 한다면 비동기로 처리하고, 완료될 때까지 로딩 스피너를 보여줄 수도 있습니다. 2) 챗봇 위젯 추가: 챗봇 UI를 표시하기 위해 미리 WebView 위젯을 화면에 포함시켜 놓거나, 필요 시점에 동적으로 보여줄 수 있습니다. 예를 들어 앱의 Scaffold 안에 챗봇 위젯을 배치한다고 하면:
+dart
+복사
+편집
+@override
+Widget build(BuildContext context) {
+  return Scaffold(
+    body: Stack(
+      children: [
+        // 앱의 메인 콘텐츠들...
+        Positioned(
+          bottom: 20, right: 20,
+          child: ChatbotWidget(), // 챗봇 WebView를 감싸는 위젯
+        )
+      ],
+    ),
+    floatingActionButton: FloatingActionButton(
+      onPressed: () {
+        ChatbotSDK.openChatbot(); // 플로팅 버튼을 눌러 챗봇 열기
+      },
+      child: Icon(Icons.chat),
+    ),
+  );
+}
+위 코드에서는 Stack과 Positioned를 이용해 챗봇 위젯을 화면 오른쪽 하단에 위치시켰습니다. ChatbotWidget()은 SDK에서 제공하는 위젯 클래스로, 내부에 WebView를 포함하고 챗봇의 UI (열기 버튼 등)를 렌더링합니다. 처음에는 챗봇 창이 닫힌 상태일 수 있으므로 ChatbotWidget 내부에서는 작은 아이콘(버튼)만 보이고, 사용자가 이를 터치하면 SolidJS 챗봇 iframe이 확장되어 대화창이 나타나도록 구성됩니다. (만약 WebView 전체를 처음부터 보이지 않게 하고 싶다면 Opacity 위젯이나 Visibility 위젯으로 제어할 수 있습니다.) 또 다른 방법으로, Flutter 자체의 UI에서 챗봇 열기 버튼을 구현할 수도 있습니다. 위 예시의 floatingActionButton처럼 Flutter 버튼을 누르면 ChatbotSDK.openChatbot()을 호출하고, 이 메소드가 WebView의 챗봇 UI를 펼치는 역할을 합니다. 이는 웹 쪽 열기 아이콘을 대신하는 동작입니다. 이중으로 버튼이 존재하게 원치 않을 경우 웹 번들의 기본 열기 아이콘을 숨기는 옵션을 chatbotConfig에 넣고(hideDefaultButton: true 등), Flutter UI에서만 열기 버튼을 제공하도록 할 수 있습니다. 3) 초기 설정 전달: ChatbotConfig를 통해 전달된 값들은 SDK 내부에서 WebView에 적용됩니다. 예를 들어 themeColor가 전달되면, initialize 단계에서 위 4번에서 논의한 방법으로 JS에 주입되어 챗봇 UI의 CSS 변수나 테마 설정에 반영됩니다. 또 userId나 welcomeMessage 등도 마찬가지 방식으로 iframe에 전달되어 초기 메시지를 출력하거나 대화를 특정 사용자 세션과 연동할 수 있습니다. 4) 챗봇 열기/닫기: 앱이 구동된 후 사용자는 하단의 플로팅 버튼(또는 웹뷰 내 아이콘)을 눌러 챗봇을 열 수 있습니다. ChatbotSDK.openChatbot()이 호출되면 Dart에서 WebView의 JS 함수가 실행되어 챗봇 iframe이 화면에 나타납니다. 사용자가 챗봇 UI의 닫기(X) 버튼을 누르면 웹에서 ChatSDK JavaScript 채널을 통해 Dart로 "closed" 메시지를 보낼 수 있고, SDK는 이를 감지하여 필요시 Dart 측에서도 상태를 변경합니다. 예를 들어 Flutter 앱이 챗봇 열린 여부를 상태로 관리한다면, close 이벤트를 받아 false로 바꾸는 식입니다. 또는 단순히 open/close는 웹에서만 처리하고 Flutter에서는 개입하지 않을 수도 있습니다. 5) 기타: SDK 사용자는 필요에 따라 챗봇 UI의 세부 스타일(CSS)도 오버라이드할 수 있게 할 수 있습니다. 예를 들어 SDK에서 ChatbotConfig에 customCssUrl이나 useDarkTheme 같은 옵션을 제공하고, 이를 웹 쪽에 전달하여 해당 CSS를 적용하도록 하면 보다 유연한 커스터마이징이 가능합니다. 또한, WebView와 앱 간에 추가 메시지 통신이 필요하면 ChatbotSDK.sendMessageToWeb()이나 ChatbotSDK.onMessageReceived 콜백 등을 노출해서, 특정 이벤트를 처리할 수 있게 설계합니다. (예: 챗봇에서 특정 키워드가 나오면 Flutter 쪽에서 화면 전환을 한다든지 하는 시나리오). 종합적으로, 샘플 앱에서는 SDK 초기화 -> UI에 위젯 추가 -> 메소드로 열고 닫기 호출 -> 옵션으로 스타일 지정의 흐름으로 구현됩니다. 이를 통해 Flutter 앱 개발자는 복잡한 웹뷰 연동을 신경 쓰지 않고도 ChatbotSDK가 제공하는 간단한 API로 앱에 챗봇을 내장할 수 있게 됩니다.
+
+
+Flutter App
+
+SDK에서 제공하는 메소드 호출: openChatbot(), closeChatbot(), 설정 전달 등
+
+Flutter WebView
+
+chatbot.html 로드
+
+내부에 web.js 스크립트를 삽입하여 챗봇 iframe 로딩
+
+window.chatbotConfig를 통해 초기 설정 전달
+
+SolidJS 챗봇 (iframe)
+
+실제 챗봇 UI 렌더링
+
+openChatbot(), closeChatbot() 함수로 제어
+
+전달된 설정값에 따라 스타일 및 초기 동작 구성
+
+브리지 통신
+
+WebView ↔ JavaScript 간 양방향 통신을 통해 제어 및 이벤트 수신
