@@ -103,6 +103,33 @@
   <lightbot-standard style="height: 100vh;"></lightbot-standard>
   
   <script type="module">
+    // URL에서 쿼리 파라미터 파싱하는 함수
+    function getQueryParams() {
+      const params = {};
+      const searchParams = new URLSearchParams(window.location.search);
+      
+      // config 파라미터 처리 (JSON으로 인코딩된 객체)
+      const configParam = searchParams.get('config');
+      if (configParam) {
+        try {
+          const configObj = JSON.parse(decodeURIComponent(configParam));
+          Object.assign(params, configObj);
+        } catch (e) {
+          console.error('Config 파라미터 파싱 오류:', e);
+        }
+      }
+      
+      // 개별 파라미터 처리 (config가 아닌 직접 URL에 포함된 파라미터)
+      for (const [key, value] of searchParams.entries()) {
+        if (key !== 'config') {
+          params[key] = value;
+        }
+      }
+      
+      console.log('파싱된 파라미터:', params);
+      return params;
+    }
+    
     // 오류 발생 시 표시할 함수
     function showError(message) {
       console.error("Error:", message);
@@ -119,21 +146,21 @@
     };
 
     try {
+      // URL 파라미터 파싱
+      const urlParams = getQueryParams();
+      
       // 웹챗 로드 시도
       console.log("웹챗 로드 시도 중...");
-      let prefilledVariables = {};
-      if(window.chatConfig) {
-                prefilledVariables = {
-                    memberId: "delivery-user",
-                    userName : "tester"
-                };
-        } else {
-            prefilledVariables = {
-                memberId: "",
-                userName : "non-member"
-            };
-        }
-
+      
+      // 기본값과 URL 파라미터를 합쳐서 prefilledVariables 생성
+      // 모든 파라미터를 그대로 prefilledVariables로 사용
+      const prefilledVariables = { ...urlParams };
+      
+      // 기본값 설정 (값이 없을 경우만)
+      if (!prefilledVariables.memberId) prefilledVariables.memberId = "";
+      if (!prefilledVariables.userName) prefilledVariables.userName = "";
+      
+      console.log("사용할 prefilledVariables:", prefilledVariables);
 
       import('https://lightbot-rage.s3.ap-northeast-2.amazonaws.com/lightbot/0.3.7/v1/web.js')
         .then(module => {
@@ -142,16 +169,28 @@
           
           Lightbot.initStandard({
             lightbot: "domain-cz5g02d",
-            apiHost: "https://lightbot-dev.lbucess.com", // HTTP -> HTTPS로 변경
-
+            apiHost: "https://lightbot-dev.lbucess.com",
             prefilledVariables: prefilledVariables,
-            
             element: document.querySelector('lightbot-standard'),
             onInitialized: () => {
               console.log("웹챗 초기화 완료");
-              // 초기화 후 이벤트 리스너 추가
+              
+              // CSS 스케일 변수 설정 (URL에서 전달된 경우)
+              if (urlParams.scale) {
+                document.documentElement.style.setProperty('--chat-scale', urlParams.scale);
+                console.log('스케일 적용됨:', urlParams.scale);
+              }
+              
+              // ChatSDK로 초기화 완료 알림
+              if (window.ChatSDK) {
+                window.ChatSDK.postMessage(JSON.stringify({
+                  type: 'initialized',
+                  success: true
+                }));
+              }
+              
+              // 리사이즈 이벤트 리스너 추가
               window.addEventListener('resize', () => {
-                // 리사이즈 시 Flutter에 알림
                 if (window.ChatSDK) {
                   window.ChatSDK.postMessage(JSON.stringify({
                     type: 'resize',
@@ -164,6 +203,14 @@
             onError: (error) => {
               console.error("웹챗 초기화 오류:", error);
               showError("초기화 중 오류가 발생했습니다.");
+              
+              // ChatSDK로 오류 알림
+              if (window.ChatSDK) {
+                window.ChatSDK.postMessage(JSON.stringify({
+                  type: 'error',
+                  message: error.message || "초기화 오류"
+                }));
+              }
             }
           });
         })

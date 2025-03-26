@@ -36,6 +36,19 @@ class _WebChatOverlayState extends State<WebChatOverlay>
   }
 
   void _initWebView() {
+    final chatConfig = {
+      'memberId': 'm389218-3djjsdhj-3i8923',
+      'userName': '테스터',
+      'scale': '0.95', // 기본 스케일 값도 함께 전달
+    };
+
+    // URL 쿼리 파라미터로 인코딩
+    final encodedConfig = Uri.encodeComponent(jsonEncode(chatConfig));
+
+    // 외부 호스팅된 HTML URL
+    final externalUrl =
+        'https://lightbot-rage.s3.ap-northeast-2.amazonaws.com/lightbot/page/v1/chatbot_external.html';
+
     _webViewController =
         WebViewController()
           ..setJavaScriptMode(JavaScriptMode.unrestricted)
@@ -50,17 +63,17 @@ class _WebChatOverlayState extends State<WebChatOverlay>
                 setState(() {
                   _isLoading = false;
                 });
-                // 화면 크기에 따라 웹챗 스케일 자동 조정
-                _adjustChatScale();
 
-                // 파라미터 전달을 위한 JavaScript 실행
-                _webViewController.runJavaScript('''
-                  window.chatConfig = {
-                    theme: 'light',
-                    userId: 'user123',
-                    apiKey: 'your-api-key'
-                  };
-                ''');
+                // 화면 크기가 변경되었을 때 스케일 값을 업데이트
+                final screenWidth = MediaQuery.of(context).size.width;
+                final screenHeight = MediaQuery.of(context).size.height;
+
+                // 화면 크기에 따라 스케일 조정 (외부 HTML에 전달된 값이 우선함)
+                if (screenWidth < 320 || screenHeight < 600) {
+                  _webViewController.runJavaScript(
+                    'document.documentElement.style.setProperty("--chat-scale", "0.75");',
+                  );
+                }
               },
               onWebResourceError: (WebResourceError error) {
                 print('웹뷰 에러: ${error.description}, 에러 코드: ${error.errorCode}');
@@ -70,35 +83,8 @@ class _WebChatOverlayState extends State<WebChatOverlay>
           ..enableZoom(true)
           ..clearCache()
           ..clearLocalStorage()
-          ..loadFlutterAsset('assets/chatbot_standard.html');
-  }
-
-  // 화면 크기에 따라 웹챗 스케일 조정
-  void _adjustChatScale() {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final screenHeight = MediaQuery.of(context).size.height;
-
-    // 화면 크기에 따라 스케일 값 결정
-    double scale = 0.95; // 기본값
-
-    // 작은 화면 (360dp 미만)
-    if (screenWidth < 360) {
-      scale = 0.85;
-    }
-    // 매우 작은 화면
-    else if (screenWidth < 320) {
-      scale = 0.75;
-    }
-
-    // 화면 높이가 작은 경우에도 조정
-    if (screenHeight < 600) {
-      scale = scale * 0.9;
-    }
-
-    // CSS 변수 업데이트를 위한 JavaScript 실행
-    _webViewController.runJavaScript(
-      'document.documentElement.style.setProperty("--chat-scale", "$scale");',
-    );
+          // 외부 URL에 쿼리 파라미터 포함하여 로드
+          ..loadRequest(Uri.parse('$externalUrl?config=$encodedConfig'));
   }
 
   void _handleJavaScriptMessage(JavaScriptMessage message) {
