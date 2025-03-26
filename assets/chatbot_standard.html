@@ -122,7 +122,7 @@
       // 웹챗 로드 시도
       console.log("웹챗 로드 시도 중...");
       
-      import('https://lightbot-rage.s3.ap-northeast-2.amazonaws.com/web.js')
+      import('https://lightbot-rage.s3.ap-northeast-2.amazonaws.com/lightbot/0.3.7/v1/web.js')
         .then(module => {
           console.log("Lightbot 모듈 로드 성공");
           const Lightbot = module.default;
@@ -130,6 +130,11 @@
           Lightbot.initStandard({
             lightbot: "domain-cz5g02d",
             apiHost: "https://lightbot-dev.lbucess.com", // HTTP -> HTTPS로 변경
+            prefilledVariables: {
+                memberId: "delivery-user",
+                userName : "tester"
+                },
+            
             element: document.querySelector('lightbot-standard'),
             onInitialized: () => {
               console.log("웹챗 초기화 완료");

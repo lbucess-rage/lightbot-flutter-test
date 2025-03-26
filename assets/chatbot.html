@@ -202,7 +202,7 @@
             initializeLightbot(config);
           } else {
             // 직접 import 시도
-            import('https://lightbot-rage.s3.ap-northeast-2.amazonaws.com/web.js')
+            import('https://lightbot-rage.s3.ap-northeast-2.amazonaws.com/lightbot/0.3.7/v1/web.js')
               .then(module => {
                 window.Lightbot = module.default;
                 initializeLightbot(config);
@@ -217,7 +217,7 @@
       };
       
       // src 설정 (innerHTML 대신)
-      script.src = 'https://lightbot-rage.s3.ap-northeast-2.amazonaws.com/web.js';
+      script.src = 'https://lightbot-rage.s3.ap-northeast-2.amazonaws.com/lightbot/0.3.7/v1/web.js';
       
       // 문서에 추가
       document.head.appendChild(script);
