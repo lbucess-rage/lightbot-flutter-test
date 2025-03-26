@@ -52,12 +52,24 @@ class _WebChatOverlayState extends State<WebChatOverlay>
                 });
                 // 화면 크기에 따라 웹챗 스케일 자동 조정
                 _adjustChatScale();
+
+                // 파일 업로드 허용 설정 JavaScript 주입
+                _webViewController.runJavaScript('''
+                  // 파일 입력 요소 이벤트 처리
+                  document.addEventListener('click', function(e) {
+                    if (e.target && (e.target.type === 'file' || 
+                        e.target.closest('input[type=file]'))) {
+                      console.log('파일 선택 요소 클릭됨');
+                    }
+                  }, true);
+                ''');
               },
               onWebResourceError: (WebResourceError error) {
                 print('웹뷰 에러: ${error.description}, 에러 코드: ${error.errorCode}');
               },
             ),
           )
+          ..enableZoom(true)
           ..clearCache()
           ..clearLocalStorage()
           ..loadFlutterAsset('assets/chatbot_standard.html');
