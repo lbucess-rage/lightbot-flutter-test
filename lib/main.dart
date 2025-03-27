@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:first_flutter_app/screens/home_screen.dart';
 import 'package:first_flutter_app/theme/app_theme.dart';
 import 'package:first_flutter_app/widgets/bottom_navigation.dart';
-import 'package:first_flutter_app/services/chat_service.dart';
+import 'package:lightbot_sdk/lightbot_sdk.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -16,39 +16,16 @@ void main() async {
     ),
   );
 
-  // 웹챗 SDK 초기화
-  await _initChatService();
-
-  runApp(const MyApp());
-}
-
-Future<void> _initChatService() async {
-  final chatService = ChatService();
-
-  await chatService.initialize(
-    ChatConfig(
-      lightbotId: 'bpzv9ay',
-      apiHost: 'https://api.example.com',
-      previewMessage: '안녕하세요! 무엇을 도와드릴까요?',
-      prefilledVariables: {'userId': 'user123', 'userName': '홍길동'},
-      styles: {
-        'button': {
-          'size': '60px',
-          'backgroundColor': '#4373e5',
-          'boxShadow': '0 4px 12px rgba(0, 0, 0, 0.1)',
-        },
-        'chatWindow': {
-          'width': '380px',
-          'height': '600px',
-          'backgroundColor': '#ffffff',
-        },
-      },
+  // Lightbot SDK 초기화
+  LightbotSDK.initialize(
+    config: const LightbotConfig(
+      memberId: 'm389218-3djjsdhj-3i8923',
+      userName: '테스터1111111',
+      scale: '0.95',
     ),
   );
 
-  chatService.setMessageListener((message) {
-    print('웹챗 메시지: $message');
-  });
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {

@@ -3,7 +3,8 @@ import 'package:first_flutter_app/models/notice.dart';
 import 'package:first_flutter_app/theme/app_theme.dart';
 import 'package:first_flutter_app/widgets/notice_widget.dart';
 import 'package:first_flutter_app/widgets/app_feature_button.dart';
-import 'package:first_flutter_app/widgets/web_chat_overlay.dart';
+// import 'package:first_flutter_app/widgets/web_chat_overlay.dart';
+import 'package:lightbot_sdk/lightbot_sdk.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -23,7 +24,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _showCustomerSupport() {
-    showWebChat(context);
+    LightbotSDK.showAsDialog(context);
   }
 
   @override
