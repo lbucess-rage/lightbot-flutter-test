@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:first_flutter_app/screens/home_screen.dart';
 import 'package:first_flutter_app/theme/app_theme.dart';
 import 'package:first_flutter_app/widgets/bottom_navigation.dart';
-import 'package:lightbot_sdk/lightbot_sdk.dart';
+import 'package:lightbot_sdk_v3271/lightbot_sdk_v3271.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

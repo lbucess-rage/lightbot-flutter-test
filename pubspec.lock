@@ -231,6 +231,13 @@ packages:
       relative: true
     source: path
     version: "0.0.1"
+  lightbot_sdk_v3271:
+    dependency: "direct main"
+    description:
+      path: "packages/lightbot_sdk_v3271"
+      relative: true
+    source: path
+    version: "0.0.1"
   lints:
     dependency: transitive
     description:

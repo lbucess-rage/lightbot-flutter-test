@@ -43,6 +43,8 @@ dependencies:
     fl_chart: ^0.66.2
     lightbot_sdk:
         path: packages/lightbot_sdk
+    lightbot_sdk_v3271:
+        path: packages/lightbot_sdk_v3271
 
 dev_dependencies:
     flutter_test:
