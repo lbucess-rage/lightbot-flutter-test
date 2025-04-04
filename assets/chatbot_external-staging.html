@@ -162,13 +162,13 @@
       
       console.log("사용할 prefilledVariables:", prefilledVariables);
       
-      import('https://lightbot-rage.s3.ap-northeast-2.amazonaws.com/lightbot/0.3.7/v1/web.js')
+      import('https://lightbot-rage.s3.ap-northeast-2.amazonaws.com/lightbot/staging/v1/web.js')
         .then(module => {
           console.log("Lightbot 모듈 로드 성공");
           const Lightbot = module.default;
           
           Lightbot.initStandard({
-            lightbot: "domain-cz5g02d",
+            lightbot: "stage-sddorcr",
             apiHost: "https://lightbot-dev.lbucess.com",
             prefilledVariables: prefilledVariables,
             element: document.querySelector('lightbot-standard'),

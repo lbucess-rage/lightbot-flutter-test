@@ -4,7 +4,7 @@ import 'package:first_flutter_app/theme/app_theme.dart';
 import 'package:first_flutter_app/widgets/notice_widget.dart';
 import 'package:first_flutter_app/widgets/app_feature_button.dart';
 // import 'package:first_flutter_app/widgets/web_chat_overlay.dart';
-import 'package:lightbot_sdk/lightbot_sdk.dart';
+import 'package:lightbot_sdk_v3271/lightbot_sdk_v3271.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -24,7 +24,21 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _showCustomerSupport() {
-    LightbotSDK.showAsDialog(context);
+    final currentConfig = LightbotSDK.config;
+
+    // LightbotSDK.updateConfig(
+    //   currentConfig.copyWith(
+    //     additionalParams: {
+    //       ...currentConfig.additionalParams,
+    //       'ci': 'n0veu3t3gd648paqvp10lzkw',
+    //       'directUrl':
+    //           'https://lightbot-dev.lbucess.com/domain-cz5g02d?memberId=r1111&ci=n0veu3t3gd648paqvp10lzkw',
+    //     },
+    //   ),
+    // );
+
+    LightbotSDK.showAsBottomSheet(context);
+    // LightbotSDK.showAsDialog(context);
   }
 
   @override

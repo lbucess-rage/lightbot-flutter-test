@@ -55,6 +55,7 @@ void main() {
       memberId: 'm389218-3djjsdhj-3i8923',
       userName: '테스터',
       scale: '0.95',
+      authKey : 'xxxxxxxx'
     ),
   );
   runApp(const MyApp());
@@ -90,9 +91,11 @@ LightbotSDK.showAsDialog(
     memberId: 'custom-user',
     userName: '커스텀 사용자',
     scale: '0.9',
+    authKey : 'xxxxxxxx',
     additionalParams: {
-      'theme': 'dark',
-      'customParam': '값',
+        'ci': 'n0veu3t3gd648paqvp10lzkw',
+        'directUrl':
+            'https://lightbot-dev.lbucess.com/domain-cz5g02d?memberId=r1111&ci=n0veu3t3gd648paqvp10lzkw',
     },
   ),
 )

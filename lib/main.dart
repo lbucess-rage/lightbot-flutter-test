@@ -19,9 +19,17 @@ void main() async {
   // Lightbot SDK 초기화
   LightbotSDK.initialize(
     config: const LightbotConfig(
-      memberId: 'm389218-3djjsdhj-3i8923',
-      userName: '테스터1111111',
+      externalUrl:
+          'https://lightbot-rage.s3.ap-northeast-2.amazonaws.com/lightbot/staging/page/v1/chatbot_external-staging.html',
+      memberId: 'r1111',
+      userName: '테스터',
       scale: '0.95',
+      authKey: 'client_5e9622ff-eaad-4423-98e3-093cba07f167',
+      additionalParams: {
+        'ci': 'n0veu3t3gd648paqvp10lzkw111',
+        'directUrl':
+            'https://lightbot-dev.lbucess.com/domain-cz5g02d?memberId=r1111&ci=n0veu3t3gd648paqvp10lzkw112&authKey=xxxxxxxx',
+      },
     ),
   );
 
