@@ -76,15 +76,15 @@ class LightbotSDK {
       isDismissible: true,
       useSafeArea: true,
       constraints: BoxConstraints(
-        maxHeight: MediaQuery.of(context).size.height * 0.95,
+        maxHeight: MediaQuery.of(context).size.height,
       ),
       builder: (context) => GestureDetector(
         // 이 GestureDetector는 바텀시트 내부 클릭이 바텀시트를 닫지 않도록 합니다
         onTap: () {},
         child: DraggableScrollableSheet(
-          initialChildSize: 0.9,
-          minChildSize: 0.5,
-          maxChildSize: 0.95,
+          initialChildSize: 0.99,
+          minChildSize: 0.99,
+          maxChildSize: 0.99,
           expand: false,
           builder: (context, scrollController) {
             return Material(
@@ -125,15 +125,15 @@ class LightbotSDK {
                                 borderRadius: BorderRadius.circular(2),
                               ),
                             ),
-                            // 닫기 버튼 (오른쪽)
-                            Positioned(
-                              right: 8,
-                              child: IconButton(
-                                icon: const Icon(Icons.close, size: 24),
-                                onPressed: () => Navigator.of(context).pop(),
-                                color: Colors.grey.shade700,
-                              ),
-                            ),
+                            // 닫기 버튼 (오른쪽) -> 고객 요청으로 삭제
+                            // Positioned(
+                            //   right: 8,
+                            //   child: IconButton(
+                            //     icon: const Icon(Icons.close, size: 24),
+                            //     onPressed: () => Navigator.of(context).pop(),
+                            //     color: Colors.grey.shade700,
+                            //   ),
+                            // ),
                           ],
                         ),
                       ),

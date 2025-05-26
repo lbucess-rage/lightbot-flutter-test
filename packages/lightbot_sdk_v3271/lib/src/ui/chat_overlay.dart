@@ -1,9 +1,12 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/foundation.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'dart:convert';
 import '../config/lightbot_config.dart';
+import 'package:image_picker/image_picker.dart';
 
 class LightbotChatOverlay extends StatefulWidget {
   final Function? onClose;
@@ -72,125 +75,134 @@ class _LightbotChatOverlayState extends State<LightbotChatOverlay>
             final screenWidth = MediaQuery.of(context).size.width;
             final screenHeight = MediaQuery.of(context).size.height;
 
-            // 화면 크기에 따라 스케일 조정 (외부 HTML에 전달된 값이 우선함)
-            if (screenWidth < 320 || screenHeight < 600) {
-              _webViewController.runJavaScript(
-                'document.documentElement.style.setProperty("--chat-scale", "0.75");',
-              );
-            }
+            // 화면 크기에 따라 스케일 조정 (외부 HTML에 전달된 값이 우선함) - 테스트 위해 주석처리
+            // if (screenWidth < 320 || screenHeight < 600) {
+            //   _webViewController.runJavaScript(
+            //     'document.documentElement.style.setProperty("--chat-scale", "0.75");',
+            //   );
+            // }
 
             // 웹뷰 크기 정보 전달
             _webViewController.runJavaScript('''
-              window.viewportWidth = ${screenWidth};
-              window.viewportHeight = ${screenHeight};
-              console.log('뷰포트 크기:', ${screenWidth}, ${screenHeight});
+              window.viewportWidth = $screenWidth;
+              window.viewportHeight = $screenHeight;
+              console.log('뷰포트 크기:', $screenWidth, $screenHeight);
             ''');
 
-            // 스크롤 동작 최적화를 위한 JavaScript 실행
             _webViewController.runJavaScript('''
-              // 스크롤 기능 향상을 위한 스타일 추가
-              (function() {
-                // 스타일 요소 생성
-                const style = document.createElement('style');
-                style.textContent = `
-                  html, body {
-                    overflow: auto !important;
-                    -webkit-overflow-scrolling: touch !important;
-                    touch-action: pan-y !important;
-                    height: 100% !important;
-                  }
-                  
-                  /* 모든 스크롤 가능한 요소에 스타일 적용 */
-                  [class*="chat-messages"],
-                  [class*="chatMessages"],
-                  [class*="message-list"],
-                  [class*="messageList"],
-                  [class*="overflow"],
-                  [class*="scroll"],
-                  div[style*="overflow: auto"],
-                  div[style*="overflow-y: auto"],
-                  div[style*="overflow:auto"],
-                  div[style*="overflow-y:auto"] {
-                    overflow-y: auto !important;
-                    -webkit-overflow-scrolling: touch !important;
-                    touch-action: pan-y !important;
-                    pointer-events: auto !important;
-                  }
-                  
-                  /* iframe 내부 스크롤 허용 */
-                  iframe {
-                    pointer-events: auto !important;
-                  }
-                `;
-                document.head.appendChild(style);
-                console.log('스크롤 스타일이 적용되었습니다.');
-              })();
-              
-              // 이벤트 핸들러 설정 (터치 이벤트 개선)
-              (function() {
-                // 스크롤 영역 자동 탐지
-                const potentialScrollables = Array.from(document.querySelectorAll('*')).filter(el => {
-                  const style = window.getComputedStyle(el);
-                  return style.overflowY === 'auto' || style.overflowY === 'scroll' ||
-                         style.overflow === 'auto' || style.overflow === 'scroll' ||
-                         el.classList.toString().includes('chat') || 
-                         el.classList.toString().includes('message');
-                });
-                
-                console.log('스크롤 가능한 요소 감지:', potentialScrollables.length);
-                
-                // 모든 스크롤 가능한 요소에 passive 터치 리스너 추가
-                potentialScrollables.forEach(el => {
-                  el.style.webkitOverflowScrolling = 'touch';
-                  el.style.overflowY = 'auto';
-                  el.style.touchAction = 'pan-y';
-                  
-                  // 이벤트 리스너 추가
-                  el.addEventListener('touchstart', function(e) {
-                    // Do nothing, this enables better scroll performance
-                  }, { passive: true });
-                  
-                  console.log('스크롤 처리가 적용된 요소:', el.tagName, el.classList?.toString());
-                });
-                
-                // 문서 전체에 대한 스크롤 개선
-                document.addEventListener('touchmove', function(e) {
-                  // Allow default scrolling behavior
-                }, { passive: true });
-                
-                // 주기적으로 새로운 스크롤 요소 확인 (동적 UI 대응)
-                setInterval(() => {
-                  const newScrollables = Array.from(document.querySelectorAll('*')).filter(el => {
-                    const style = window.getComputedStyle(el);
-                    return (style.overflowY === 'auto' || style.overflowY === 'scroll' ||
-                           style.overflow === 'auto' || style.overflow === 'scroll') &&
-                           !el.hasAttribute('scroll-fixed');
-                  });
-                  
-                  newScrollables.forEach(el => {
-                    el.setAttribute('scroll-fixed', 'true');
-                    el.style.webkitOverflowScrolling = 'touch';
-                    el.style.touchAction = 'pan-y';
-                    el.addEventListener('touchstart', function(e) {}, { passive: true });
-                  });
-                }, 1000);
-                
-                console.log('스크롤 이벤트 핸들러가 설정되었습니다.');
-              })();
-              
-              // 부모 컨테이너에 스크롤 이벤트 전파 방지
-              (function() {
-                const preventPropagation = (e) => {
-                  e.stopPropagation();
-                };
-                
-                // 스크롤 가능한 영역에서 터치 이벤트 버블링 방지
-                const scrollContainers = document.querySelectorAll('[class*="message"], [class*="chat"]');
-                scrollContainers.forEach(container => {
-                  container.addEventListener('touchmove', preventPropagation, { passive: true });
-                });
-              })();
-            ''');
+        window.flutterPlatform = {
+          platform: '${Platform.isAndroid ? 'android' : Platform.isIOS ? 'ios' : 'unknown'}',
+          isWebView: true
+          
+        };
+        console.log('Flutter 플랫폼 정보:', window.flutterPlatform);
+      ''');
+
+            // 스크롤 동작 최적화를 위한 JavaScript 실행 - 테스트 위해 주석처리
+            // _webViewController.runJavaScript('''
+            //   // 스크롤 기능 향상을 위한 스타일 추가
+            //   (function() {
+            //     // 스타일 요소 생성
+            //     const style = document.createElement('style');
+            //     style.textContent = `
+            //       html, body {
+            //         overflow: auto !important;
+            //         -webkit-overflow-scrolling: touch !important;
+            //         touch-action: pan-y !important;
+            //         height: 100% !important;
+            //       }
+
+            //       /* 모든 스크롤 가능한 요소에 스타일 적용 */
+            //       [class*="chat-messages"],
+            //       [class*="chatMessages"],
+            //       [class*="message-list"],
+            //       [class*="messageList"],
+            //       [class*="overflow"],
+            //       [class*="scroll"],
+            //       div[style*="overflow: auto"],
+            //       div[style*="overflow-y: auto"],
+            //       div[style*="overflow:auto"],
+            //       div[style*="overflow-y:auto"] {
+            //         overflow-y: auto !important;
+            //         -webkit-overflow-scrolling: touch !important;
+            //         touch-action: pan-y !important;
+            //         pointer-events: auto !important;
+            //       }
+
+            //       /* iframe 내부 스크롤 허용 */
+            //       iframe {
+            //         pointer-events: auto !important;
+            //       }
+            //     `;
+            //     document.head.appendChild(style);
+            //     console.log('스크롤 스타일이 적용되었습니다.');
+            //   })();
+
+            //   // 이벤트 핸들러 설정 (터치 이벤트 개선)
+            //   (function() {
+            //     // 스크롤 영역 자동 탐지
+            //     const potentialScrollables = Array.from(document.querySelectorAll('*')).filter(el => {
+            //       const style = window.getComputedStyle(el);
+            //       return style.overflowY === 'auto' || style.overflowY === 'scroll' ||
+            //              style.overflow === 'auto' || style.overflow === 'scroll' ||
+            //              el.classList.toString().includes('chat') ||
+            //              el.classList.toString().includes('message');
+            //     });
+
+            //     console.log('스크롤 가능한 요소 감지:', potentialScrollables.length);
+
+            //     // 모든 스크롤 가능한 요소에 passive 터치 리스너 추가
+            //     potentialScrollables.forEach(el => {
+            //       el.style.webkitOverflowScrolling = 'touch';
+            //       el.style.overflowY = 'auto';
+            //       el.style.touchAction = 'pan-y';
+
+            //       // 이벤트 리스너 추가
+            //       el.addEventListener('touchstart', function(e) {
+            //         // Do nothing, this enables better scroll performance
+            //       }, { passive: true });
+
+            //       console.log('스크롤 처리가 적용된 요소:', el.tagName, el.classList?.toString());
+            //     });
+
+            //     // 문서 전체에 대한 스크롤 개선
+            //     document.addEventListener('touchmove', function(e) {
+            //       // Allow default scrolling behavior
+            //     }, { passive: true });
+
+            //     // 주기적으로 새로운 스크롤 요소 확인 (동적 UI 대응)
+            //     setInterval(() => {
+            //       const newScrollables = Array.from(document.querySelectorAll('*')).filter(el => {
+            //         const style = window.getComputedStyle(el);
+            //         return (style.overflowY === 'auto' || style.overflowY === 'scroll' ||
+            //                style.overflow === 'auto' || style.overflow === 'scroll') &&
+            //                !el.hasAttribute('scroll-fixed');
+            //       });
+
+            //       newScrollables.forEach(el => {
+            //         el.setAttribute('scroll-fixed', 'true');
+            //         el.style.webkitOverflowScrolling = 'touch';
+            //         el.style.touchAction = 'pan-y';
+            //         el.addEventListener('touchstart', function(e) {}, { passive: true });
+            //       });
+            //     }, 1000);
+
+            //     console.log('스크롤 이벤트 핸들러가 설정되었습니다.');
+            //   })();
+
+            //   // 부모 컨테이너에 스크롤 이벤트 전파 방지
+            //   (function() {
+            //     const preventPropagation = (e) => {
+            //       e.stopPropagation();
+            //     };
+
+            //     // 스크롤 가능한 영역에서 터치 이벤트 버블링 방지
+            //     const scrollContainers = document.querySelectorAll('[class*="message"], [class*="chat"]');
+            //     scrollContainers.forEach(container => {
+            //       container.addEventListener('touchmove', preventPropagation, { passive: true });
+            //     });
+            //   })();
+            // ''');
           },
           onWebResourceError: (WebResourceError error) {
             print('웹뷰 에러: ${error.description}, 에러 코드: ${error.errorCode}');
@@ -218,10 +230,92 @@ class _LightbotChatOverlayState extends State<LightbotChatOverlay>
             print('채팅 메시지: ${data['content']}');
             print('챗봇 응답: ${data['response']}');
             break;
+          case 'select_images':
+            _handleSelectImages(data as Map<String, dynamic>);
+            break;
         }
       }
     } catch (e) {
       print('메시지 파싱 오류: $e');
+    }
+  }
+
+  void _handleSelectImages(Map<String, dynamic> data) async {
+    print('_handleSelectImages 이미지 선택 요청: $data');
+    final int maxFiles = data['maxFiles'];
+    final int maxFileSize = (data['maxFileSize'] ?? 20) * 1024 * 1024;
+
+    final List<String> allowedExtensions = List<String>.from(
+        data['allowedTypes'] ?? ['jpg', 'jpeg', 'png', 'gif', 'webp']);
+
+    try {
+      List<Map<String, dynamic>> selectedImages = [];
+
+      if (allowedExtensions.contains('image')) {
+        final ImagePicker picker = ImagePicker();
+
+        if (maxFiles > 1) {
+          final XFile? image = await picker.pickImage(
+            source: ImageSource.gallery,
+            maxHeight: 1920,
+            maxWidth: 1080,
+            imageQuality: 85,
+          );
+
+          if (image != null) {
+            final file = File(image.path);
+            if (file.lengthSync() <= maxFileSize) {
+              final bytes = await file.readAsBytes();
+              final base64Image = base64Encode(bytes);
+
+              selectedImages.add({
+                'name': image.name,
+                'size': file.lengthSync(),
+                'type': 'image/${image.path.split('.').last}',
+                'data': base64Image,
+              });
+            }
+          }
+        } else {
+          // MULTI 이미지 선택
+          final List<XFile> images = await picker.pickMultiImage(
+            maxHeight: 1920,
+            maxWidth: 1080,
+            imageQuality: 85,
+          );
+
+          for (XFile image in images.take(maxFiles)) {
+            final file = File(image.path);
+            if (file.lengthSync() <= maxFileSize) {
+              final bytes = await file.readAsBytes();
+              final base64Image = base64Encode(bytes);
+
+              selectedImages.add({
+                'name': image.name,
+                'size': file.lengthSync(),
+                'type': 'image/${image.path.split('.').last}',
+                'data': base64Image,
+              });
+            }
+          }
+        }
+      }
+
+      if (selectedImages.isNotEmpty) {
+        print('selectedImages: $selectedImages');
+        _webViewController.runJavaScript('''
+            window.dispatchEvent(new CustomEvent('nativeFilesSelected', {
+            detail: ${jsonEncode(selectedImages)}
+            }));
+            ''');
+      }
+    } catch (e) {
+      print('이미지 선택 오류: $e');
+      _webViewController.runJavaScript('''
+        window.dispatchEvent(new CustomEvent('nativeFileError', {
+        detail: { error: '파일 선택 중 오류가 발생했습니다.' }
+      }));
+      ''');
     }
   }
 
@@ -306,10 +400,10 @@ class _LightbotChatOverlayState extends State<LightbotChatOverlay>
                   boxShadow: isInBottomSheet
                       ? []
                       : [
-                          BoxShadow(
+                          const BoxShadow(
                             color: Colors.black26,
                             blurRadius: 10,
-                            offset: const Offset(0, 5),
+                            offset: Offset(0, 5),
                           ),
                         ],
                 ),
