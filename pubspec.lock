@@ -349,7 +349,7 @@ packages:
       path: "packages/lightbot_sdk_v3271"
       relative: true
     source: path
-    version: "0.0.5"
+    version: "0.0.6"
   lints:
     dependency: transitive
     description:
